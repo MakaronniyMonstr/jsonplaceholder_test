@@ -31,6 +31,11 @@ public class PostControllerTest {
                 .build();
     }
 
+    /**
+     * The test queries for all posts
+     * Expected: 200 OK
+     *           response body matches for specified JSON schema
+     */
     @Test
     public void getAllElements() {
         given(spec).
@@ -42,6 +47,11 @@ public class PostControllerTest {
                     body("$.size", greaterThan(0));
     }
 
+    /**
+     * The test queries for post with valid id
+     * Expected: 200 OK
+     *           post with queried id
+     */
     @ParameterizedTest
     @ValueSource(ints = {1, 50, 100})
     public void getElementByValidId(int id) {
@@ -54,6 +64,11 @@ public class PostControllerTest {
                     body("id", equalTo(id));
     }
 
+    /**
+     * The test queries for post with invalid id
+     * Expected: 404 NOT_FOUND
+     *           empty response body
+     */
     @ParameterizedTest
     @ValueSource(ints = {-1, 101, Integer.MAX_VALUE, Integer.MIN_VALUE})
     public void getElementByInvalidId(int id) {
@@ -62,10 +77,15 @@ public class PostControllerTest {
                 get("posts/" + id).
             then().
                 statusCode(is(HttpStatus.SC_NOT_FOUND)).
-                body("isEmpty()", is(true)).
-                extract().as(PostDTO.class);
+                body("isEmpty()", is(true));
     }
 
+    /**
+     * The test queries for posts filtered by valid id parameter
+     * Expected: 200 OK
+     *           posts with queried id
+     *           response body matches for specified JSON schema
+     */
     @ParameterizedTest
     @ValueSource(ints = {1, 100, 50})
     public void filterResourcesByValidId() {
@@ -81,13 +101,17 @@ public class PostControllerTest {
                         extract().as(PostDTO[].class);
 
         assertThat(posts.length, greaterThan(0));
-        // All requested items contain specified userId
         assertThat(
                 Arrays.stream(posts).
                         allMatch(p -> p.getUserId().equals(userId)),
                 is(true));
     }
 
+    /**
+     * The test queries for post with invalid id parameter
+     * Expected: 200 OK
+     *           empty JSON array
+     */
     @ParameterizedTest
     @ValueSource(ints = {-1, 101, Integer.MAX_VALUE, Integer.MIN_VALUE})
     public void filterResourcesByInvalidId(int id) {
@@ -100,29 +124,12 @@ public class PostControllerTest {
                 body("$.size", is(0));
     }
 
-    @Test
-    public void filterByValid2Parameters() {
-        int id = 5;
-        int userId = 1;
-
-        PostDTO[] posts =
-                given(spec).
-                        param("id", id).
-                        param("userId", userId).
-                    when().
-                        get("posts").
-                    then().
-                        statusCode(is(HttpStatus.SC_OK)).
-                        extract().as(PostDTO[].class);
-
-        assertThat(posts.length, greaterThan(0));
-        assertThat(
-                Arrays.stream(posts)
-                        .allMatch(p -> p.getId().equals(id) &&
-                                        p.getUserId() == userId),
-                is(true));
-    }
-
+    /**
+     * The test queries for posts with existent parameters
+     * Expected: 200 OK
+     *           posts parameters are equals to queried parameters
+     *           response body matches for specified JSON schema
+     */
     @ParameterizedTest
     @CsvFileSource(resources = {"filter_valid_posts.csv"})
     public void filterByValidParameters(int userId, String title, String body) {
@@ -147,8 +154,10 @@ public class PostControllerTest {
                 is(true));
     }
 
-    /*
-    Test queries resource with
+    /**
+     * The test queries for posts with nonexistent parameters
+     * Expected: 200 OK
+     *           empty array
      */
     @ParameterizedTest
     @CsvFileSource(resources = {"filter_invalid_posts.csv"})
