@@ -12,6 +12,7 @@ repositories {
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    implementation 'org.junit.jupiter:junit-jupiter-params:5.8.1'
 
     implementation 'io.rest-assured:rest-assured:4.4.0'
     implementation group: 'io.rest-assured', name: 'json-schema-validator', version: '3.0.0'
@@ -19,10 +20,10 @@ dependencies {
     implementation 'org.hamcrest:hamcrest:2.2'
 
 
-    compileOnly 'org.projectlombok:lombok:1.18.20'
-    annotationProcessor 'org.projectlombok:lombok:1.18.20'
-    testCompileOnly 'org.projectlombok:lombok:1.18.20'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    testCompileOnly 'org.projectlombok:lombok:1.18.22'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
 
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
 }

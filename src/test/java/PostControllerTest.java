@@ -1,10 +1,15 @@
 import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import pojo.PostDTO;
+import dto.PostDTO;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Arrays;
 
@@ -13,7 +18,7 @@ import static io.restassured.module.jsv.JsonSchemaValidator.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
-public class FirstTest {
+public class PostControllerTest {
     private static RequestSpecification spec;
 
     @BeforeAll
@@ -21,7 +26,7 @@ public class FirstTest {
         spec = new RequestSpecBuilder()
                 .setContentType(ContentType.JSON)
                 .setBaseUri("https://jsonplaceholder.typicode.com")
-                //.addFilter(new RequestLoggingFilter())
+                .addFilter(new RequestLoggingFilter())
                 .addFilter(new ResponseLoggingFilter())
                 .build();
     }
@@ -32,55 +37,38 @@ public class FirstTest {
                 when().
                     get("posts").
                 then().
-                    statusCode(is(200)).
-                    body(matchesJsonSchemaInClasspath("pojo_list_schema.json")).
+                    statusCode(is(HttpStatus.SC_OK)).
+                    body(matchesJsonSchemaInClasspath("post_list_schema.json")).
                     body("$.size", greaterThan(0));
     }
 
-    @Test
-    public void getElementByValidId() {
-        int id = 1;
-
+    @ParameterizedTest
+    @ValueSource(ints = {1, 50, 100})
+    public void getElementByValidId(int id) {
         given(spec).
                 when().
                     get("posts/" + id).
                 then().
-                    statusCode(is(200)).
-                    body(matchesJsonSchemaInClasspath("pojo_schema.json")).
+                    statusCode(is(HttpStatus.SC_OK)).
+                    body(matchesJsonSchemaInClasspath("post_schema.json")).
                     body("id", equalTo(id));
     }
 
-    @Test
-    public void getElementByInvalidId() {
-        int id = 101;
-
-        PostDTO post =
-                given(spec).
-                when().
-                    get("posts/" + id).
-                then().
-                    statusCode(is(404)).
-                    extract().as(PostDTO.class);
-
-        // Is equals to empty element (all fields are null)
-        assertThat(post, equalTo(new PostDTO()));
-    }
-
-    @Test
-    public void getLimitedResources() {
-        int limit = 20;
-
+    @ParameterizedTest
+    @ValueSource(ints = {-1, 101, Integer.MAX_VALUE, Integer.MIN_VALUE})
+    public void getElementByInvalidId(int id) {
         given(spec).
-                    param("size", limit).
-                when().
-                    get("posts").
-                then().
-                    statusCode(is(200)).
-                    body("$.size", lessThanOrEqualTo(limit));
+            when().
+                get("posts/" + id).
+            then().
+                statusCode(is(HttpStatus.SC_NOT_FOUND)).
+                body("isEmpty()", is(true)).
+                extract().as(PostDTO.class);
     }
 
-    @Test
-    public void filterResourcesByValidUserId() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 100, 50})
+    public void filterResourcesByValidId() {
         int userId = 1;
 
         PostDTO[] posts =
@@ -89,7 +77,7 @@ public class FirstTest {
                     when().
                         get("posts").
                     then().
-                        statusCode(is(200)).
+                        statusCode(is(HttpStatus.SC_OK)).
                         extract().as(PostDTO[].class);
 
         assertThat(posts.length, greaterThan(0));
@@ -100,21 +88,16 @@ public class FirstTest {
                 is(true));
     }
 
-    @Test
-    public void filterResourcesByInvalidUserId() {
-        long userId = 100;
-
-        PostDTO[] posts =
-                given(spec).
-                        param("userId", userId).
-                    when().
-                        get("posts").
-                    then().
-                        statusCode(is(200)).
-                        extract().as(PostDTO[].class);
-
-        // There are no elements in response bc userId is invalid
-        assertThat(posts.length, is(0));
+    @ParameterizedTest
+    @ValueSource(ints = {-1, 101, Integer.MAX_VALUE, Integer.MIN_VALUE})
+    public void filterResourcesByInvalidId(int id) {
+        given(spec).
+                param("id", id).
+            when().
+                get("posts").
+            then().
+                statusCode(is(HttpStatus.SC_OK)).
+                body("$.size", is(0));
     }
 
     @Test
@@ -129,7 +112,7 @@ public class FirstTest {
                     when().
                         get("posts").
                     then().
-                        statusCode(is(200)).
+                        statusCode(is(HttpStatus.SC_OK)).
                         extract().as(PostDTO[].class);
 
         assertThat(posts.length, greaterThan(0));
@@ -140,12 +123,9 @@ public class FirstTest {
                 is(true));
     }
 
-    @Test
-    public void filterByValid4Parameters() {
-        int userId = 1;
-        String title = "nesciunt quas odio";
-        String body = "repudiandae veniam quaerat sunt sed\nalias aut fugiat sit autem sed est\nvoluptatem omnis possimus esse voluptatibus quis\nest aut tenetur dolor neque";
-
+    @ParameterizedTest
+    @CsvFileSource(resources = {"filter_valid_posts.csv"})
+    public void filterByValidParameters(int userId, String title, String body) {
         PostDTO[] posts =
                 given(spec).
                         param("userId", userId).
@@ -154,7 +134,8 @@ public class FirstTest {
                     when().
                         get("posts").
                     then().
-                        statusCode(200).
+                        statusCode(is(HttpStatus.SC_OK)).
+                        body(matchesJsonSchemaInClasspath("post_list_schema.json")).
                         extract().as(PostDTO[].class);
 
         assertThat(posts.length, greaterThan(0));
@@ -164,5 +145,22 @@ public class FirstTest {
                                         p.getTitle().equals(title) &&
                                         p.getBody().equals(body)),
                 is(true));
+    }
+
+    /*
+    Test queries resource with
+     */
+    @ParameterizedTest
+    @CsvFileSource(resources = {"filter_invalid_posts.csv"})
+    public void filterByInvalidParameters(int userId, String title, String body) {
+        given(spec).
+                param("userId", userId).
+                param("title", title).
+                param("body", body).
+            when().
+                get("posts").
+            then().
+                statusCode(is(HttpStatus.SC_OK)).
+                body("$.size", is(0));
     }
 }
