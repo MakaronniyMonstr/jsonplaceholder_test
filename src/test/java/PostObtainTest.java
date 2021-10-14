@@ -1,8 +1,10 @@
 import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
 import org.apache.http.HttpStatus;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -20,15 +22,21 @@ import static org.hamcrest.Matchers.*;
 
 public class PostObtainTest {
     private static RequestSpecification spec;
+    private static ResponseSpecification commonResponseSpec;
 
     @BeforeAll
     static void init_spec() {
-        spec = new RequestSpecBuilder()
-                .setContentType(ContentType.JSON)
-                .setBaseUri("https://jsonplaceholder.typicode.com")
-                .addFilter(new RequestLoggingFilter())
-                .addFilter(new ResponseLoggingFilter())
-                .build();
+        spec = new RequestSpecBuilder().
+                setContentType(ContentType.JSON).
+                setBaseUri("https://jsonplaceholder.typicode.com").
+                addFilter(new RequestLoggingFilter()).
+                addFilter(new ResponseLoggingFilter()).
+                build();
+
+        // commonResponseSpec is specification used in every response
+        commonResponseSpec = new ResponseSpecBuilder().
+                expectContentType("application/json; charset=utf-8").
+                build();
     }
 
     /**
@@ -43,6 +51,7 @@ public class PostObtainTest {
                     get("posts").
                 then().
                     statusCode(is(HttpStatus.SC_OK)).
+                    spec(commonResponseSpec).
                     body(matchesJsonSchemaInClasspath("schema/post_list_schema.json")).
                     body("$.size", greaterThan(0));
     }
@@ -60,6 +69,7 @@ public class PostObtainTest {
                     get("posts/" + id).
                 then().
                     statusCode(is(HttpStatus.SC_OK)).
+                    spec(commonResponseSpec).
                     body(matchesJsonSchemaInClasspath("schema/post_schema.json")).
                     body("id", equalTo(id));
     }
@@ -70,13 +80,14 @@ public class PostObtainTest {
      *           empty response body
      */
     @ParameterizedTest
-    @ValueSource(ints = {-1, 101, Integer.MAX_VALUE, Integer.MIN_VALUE})
+    @ValueSource(ints = {-1, 0, 101, Integer.MAX_VALUE, Integer.MIN_VALUE})
     public void getElementByInvalidId(int id) {
         given(spec).
             when().
                 get("posts/" + id).
             then().
                 statusCode(is(HttpStatus.SC_NOT_FOUND)).
+                spec(commonResponseSpec).
                 body("isEmpty()", is(true));
     }
 
@@ -97,6 +108,7 @@ public class PostObtainTest {
                         get("posts").
                     then().
                         statusCode(is(HttpStatus.SC_OK)).
+                        spec(commonResponseSpec).
                         extract().as(PostDTO[].class);
 
         assertThat(posts.length, greaterThan(0));
@@ -120,6 +132,7 @@ public class PostObtainTest {
                 get("posts").
             then().
                 statusCode(is(HttpStatus.SC_OK)).
+                spec(commonResponseSpec).
                 body("$.size", is(0));
     }
 
@@ -141,6 +154,7 @@ public class PostObtainTest {
                         get("posts").
                     then().
                         statusCode(is(HttpStatus.SC_OK)).
+                        spec(commonResponseSpec).
                         body(matchesJsonSchemaInClasspath("schema/post_list_schema.json")).
                         extract().as(PostDTO[].class);
 
@@ -169,6 +183,7 @@ public class PostObtainTest {
                 get("posts").
             then().
                 statusCode(is(HttpStatus.SC_OK)).
+                spec(commonResponseSpec).
                 body("$.size", is(0));
     }
 }
