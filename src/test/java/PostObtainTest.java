@@ -18,7 +18,7 @@ import static io.restassured.module.jsv.JsonSchemaValidator.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
-public class PostControllerTest {
+public class PostObtainTest {
     private static RequestSpecification spec;
 
     @BeforeAll
@@ -43,7 +43,7 @@ public class PostControllerTest {
                     get("posts").
                 then().
                     statusCode(is(HttpStatus.SC_OK)).
-                    body(matchesJsonSchemaInClasspath("post_list_schema.json")).
+                    body(matchesJsonSchemaInClasspath("schema/post_list_schema.json")).
                     body("$.size", greaterThan(0));
     }
 
@@ -60,7 +60,7 @@ public class PostControllerTest {
                     get("posts/" + id).
                 then().
                     statusCode(is(HttpStatus.SC_OK)).
-                    body(matchesJsonSchemaInClasspath("post_schema.json")).
+                    body(matchesJsonSchemaInClasspath("schema/post_schema.json")).
                     body("id", equalTo(id));
     }
 
@@ -88,12 +88,11 @@ public class PostControllerTest {
      */
     @ParameterizedTest
     @ValueSource(ints = {1, 100, 50})
-    public void filterResourcesByValidId() {
-        int userId = 1;
+    public void filterResourcesByValidId(int id) {
 
         PostDTO[] posts =
                 given(spec).
-                        param("userId", userId).
+                        param("id", id).
                     when().
                         get("posts").
                     then().
@@ -103,7 +102,7 @@ public class PostControllerTest {
         assertThat(posts.length, greaterThan(0));
         assertThat(
                 Arrays.stream(posts).
-                        allMatch(p -> p.getUserId().equals(userId)),
+                        allMatch(p -> p.getId().equals(id)),
                 is(true));
     }
 
@@ -131,7 +130,7 @@ public class PostControllerTest {
      *           response body matches for specified JSON schema
      */
     @ParameterizedTest
-    @CsvFileSource(resources = {"filter_valid_posts.csv"})
+    @CsvFileSource(resources = {"filter/filter_valid_posts.csv"})
     public void filterByValidParameters(int userId, String title, String body) {
         PostDTO[] posts =
                 given(spec).
@@ -142,7 +141,7 @@ public class PostControllerTest {
                         get("posts").
                     then().
                         statusCode(is(HttpStatus.SC_OK)).
-                        body(matchesJsonSchemaInClasspath("post_list_schema.json")).
+                        body(matchesJsonSchemaInClasspath("schema/post_list_schema.json")).
                         extract().as(PostDTO[].class);
 
         assertThat(posts.length, greaterThan(0));
@@ -157,10 +156,10 @@ public class PostControllerTest {
     /**
      * The test queries for posts with nonexistent parameters
      * Expected: 200 OK
-     *           empty array
+     *           empty JSON array
      */
     @ParameterizedTest
-    @CsvFileSource(resources = {"filter_invalid_posts.csv"})
+    @CsvFileSource(resources = {"filter/filter_invalid_posts.csv"})
     public void filterByInvalidParameters(int userId, String title, String body) {
         given(spec).
                 param("userId", userId).
